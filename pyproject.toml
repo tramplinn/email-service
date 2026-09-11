@@ -1,0 +1,66 @@
+[project]
+name = "tramplin-email-service"
+version = "0.1.0"
+description = "Независимый воркер доставки писем: очередь RabbitMQ → SMTP. Не знает о шаблонах."
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    "faststream[rabbit]>=0.7.5",
+    "aiosmtplib>=4.0.0",
+    "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.5",
+    "mypy>=2.3.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/email_service"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F", "I", "N", "UP", "ANN", "ASYNC", "S", "B", "A",
+    "C4", "DTZ", "T20", "SIM", "TID", "RUF",
+]
+ignore = ["ANN401", "RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = [
+    "--cov=email_service",
+    "--cov-report=term-missing:skip-covered",
+]
+
+[tool.coverage.run]
+source = ["email_service"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+skip_covered = true

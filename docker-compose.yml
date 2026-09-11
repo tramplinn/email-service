@@ -1,0 +1,34 @@
+services:
+  email-service:
+    build: .
+    image: ${EMAIL_SERVICE_IMAGE:-tramplin-email-service:local}
+    restart: unless-stopped
+    env_file:
+      - path: .env.runtime
+        required: false
+    environment:
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-tramplin}:${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD}@tramplin-rabbitmq:5672/
+      EMAIL_TRANSACTIONAL_QUEUE_NAME: ${COMPOSE_PROJECT_NAME:-tramplin-staging}-email-transactional
+      EMAIL_BULK_QUEUE_NAME: ${COMPOSE_PROJECT_NAME:-tramplin-staging}-email-bulk
+    init: true
+    read_only: true
+    tmpfs: ["/tmp:size=64m,mode=1777"]
+    healthcheck:
+      test: ["CMD", "python", "-m", "email_service", "healthcheck"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks: [edge]
+    stop_grace_period: 30s
+    security_opt: [no-new-privileges:true]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  edge:
+    external: true
+    name: tramplin-edge
