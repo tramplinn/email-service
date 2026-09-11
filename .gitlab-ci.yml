@@ -154,7 +154,7 @@ deploy-stage:
   extends: .deploy
   variables:
     DEPLOY_PATH: "/opt/tramplin/stage/email-service"
-    DEPLOY_PROJECT: "tramplin-stage"
+    DEPLOY_PROJECT: "tramplin-email-stage"
     DEPLOY_ENV: "$STAGE_ENV"
   environment:
     name: staging
@@ -166,7 +166,7 @@ deploy-production:
   extends: .deploy
   variables:
     DEPLOY_PATH: "/opt/tramplin/production/email-service"
-    DEPLOY_PROJECT: "tramplin-prod"
+    DEPLOY_PROJECT: "tramplin-email-prod"
     DEPLOY_ENV: "$PROD_ENV"
   environment:
     name: production
