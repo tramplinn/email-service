@@ -132,13 +132,14 @@ build:
       ssh "$SSH_USER@$SERVER_IP" "docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY"
     - |
       ssh "$SSH_USER@$SERVER_IP" \
-        "bash -s -- '$DEPLOY_PATH' '$DEPLOY_PROJECT' '$EMAIL_SERVICE_IMAGE' '$CI_REGISTRY'" <<'REMOTE'
+        "bash -s -- '$DEPLOY_PATH' '$DEPLOY_PROJECT' '$EMAIL_SERVICE_IMAGE' '$CI_REGISTRY' '$QUEUE_ENV_PREFIX'" <<'REMOTE'
       set -euo pipefail
 
       cd "$1"
       export COMPOSE_PROJECT_NAME="$2"
       export EMAIL_SERVICE_IMAGE="$3"
       registry=$4
+      export QUEUE_ENV_PREFIX="$5"
       compose=(docker compose --env-file .env.runtime)
 
       trap '"${compose[@]}" ps; "${compose[@]}" logs --tail 100' ERR
@@ -155,6 +156,7 @@ deploy-stage:
   variables:
     DEPLOY_PATH: "/opt/tramplin/stage/email-service"
     DEPLOY_PROJECT: "tramplin-email-stage"
+    QUEUE_ENV_PREFIX: "tramplin-stage"
     DEPLOY_ENV: "$STAGE_ENV"
   environment:
     name: staging
@@ -167,6 +169,7 @@ deploy-production:
   variables:
     DEPLOY_PATH: "/opt/tramplin/production/email-service"
     DEPLOY_PROJECT: "tramplin-email-prod"
+    QUEUE_ENV_PREFIX: "tramplin-prod"
     DEPLOY_ENV: "$PROD_ENV"
   environment:
     name: production

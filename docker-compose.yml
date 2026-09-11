@@ -8,8 +8,8 @@ services:
         required: false
     environment:
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-tramplin}:${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD}@tramplin-rabbitmq:5672/
-      EMAIL_TRANSACTIONAL_QUEUE_NAME: ${COMPOSE_PROJECT_NAME:-tramplin-staging}-email-transactional
-      EMAIL_BULK_QUEUE_NAME: ${COMPOSE_PROJECT_NAME:-tramplin-staging}-email-bulk
+      EMAIL_TRANSACTIONAL_QUEUE_NAME: ${QUEUE_ENV_PREFIX:-tramplin-staging}-email-transactional
+      EMAIL_BULK_QUEUE_NAME: ${QUEUE_ENV_PREFIX:-tramplin-staging}-email-bulk
     init: true
     read_only: true
     tmpfs: ["/tmp:size=64m,mode=1777"]
