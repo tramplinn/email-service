@@ -7,6 +7,7 @@ from faststream.rabbit import RabbitBroker
 from email_service.circuit_breaker import CircuitBreaker
 from email_service.config import Settings
 from email_service.consumer import (
+    _SMTP_RETRY_DELAY,
     EmailConsumerApplication,
     create_consumer,
     rabbitmq_is_healthy,
@@ -81,6 +82,30 @@ async def test_handle_requeues_after_backing_off_when_circuit_is_open() -> None:
     assert sleep.await_args.args[0] == pytest.approx(1000, abs=1)
     assert message.nack.await_count == 2
     message.nack.assert_awaited_with(requeue=True)
+
+
+async def test_handle_floors_retry_delay_behind_an_in_flight_half_open_trial() -> None:
+    """Once reset_timeout has elapsed, time_until_half_open() reads 0.0 for every caller,
+    including one blocked behind an already-running HALF_OPEN trial — not just the trial
+    itself. Regression for the busy nack/requeue loop this used to cause (see consumer.handle)."""
+    breaker = CircuitBreaker(failure_threshold=1, reset_timeout=0)
+    sender = Mock(send=AsyncMock(side_effect=SmtpSendError("refused")))
+    app = _app(sender=sender, breaker=breaker)
+    message = Mock(ack=AsyncMock(), nack=AsyncMock())
+
+    # Открывает брейкер; reset_timeout=0, так что он сразу же проходим для следующего вызова.
+    with patch("email_service.consumer.asyncio.sleep", new=AsyncMock()):
+        await app.handle(_job(), message)
+
+    # Имитируем пробный HALF_OPEN вызов, который ещё не завершился.
+    breaker._state = breaker._state.HALF_OPEN
+    breaker._trial_in_flight = True
+
+    with patch("email_service.consumer.asyncio.sleep", new=AsyncMock()) as sleep:
+        await app.handle(_job(), message)
+
+    assert sleep.await_args is not None
+    assert sleep.await_args.args[0] == pytest.approx(_SMTP_RETRY_DELAY)
 
 
 def test_subscribes_to_both_configured_queues() -> None:

@@ -57,7 +57,12 @@ class EmailConsumerApplication:
                 ),
             )
         except CircuitOpenError:
-            delay = self.breaker.time_until_half_open()
+            # time_until_half_open() only tracks the OPEN window's wall clock: once it
+            # elapses, every message blocked behind an in-flight HALF_OPEN trial reads
+            # 0.0s here too, not just the one running the trial. Without a floor those
+            # nack/requeue instantly, and the queue's single consumer spins on them in
+            # a tight loop for as long as the trial call is outstanding.
+            delay = max(self.breaker.time_until_half_open(), _SMTP_RETRY_DELAY)
             logger.warning(
                 "smtp circuit open, retrying message %s in %.1fs",
                 job.message_id,
