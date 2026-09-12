@@ -1,4 +1,5 @@
 from email.message import EmailMessage
+from typing import Protocol
 
 import aiosmtplib
 
@@ -7,6 +8,12 @@ from email_service.config import Settings
 
 class SmtpSendError(Exception):
     pass
+
+
+class EmailSender(Protocol):
+    """Что нужно от отправителя доставке: любой канал, не только SMTP."""
+
+    async def send(self, *, to: str, subject: str, html: str, text: str) -> None: ...
 
 
 class SmtpEmailSender:

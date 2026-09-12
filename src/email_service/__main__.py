@@ -1,7 +1,7 @@
 import asyncio
 import sys
 
-from email_service.consumer import create_consumer, rabbitmq_is_healthy
+from email_service.app import rabbitmq_is_healthy, run
 
 
 def main() -> None:
@@ -11,10 +11,6 @@ def main() -> None:
     if sys.argv[1:] == ["healthcheck"]:
         raise SystemExit(0 if asyncio.run(rabbitmq_is_healthy()) else 1)
     raise SystemExit("usage: python -m email_service [healthcheck]")
-
-
-async def run() -> None:
-    await create_consumer().app.run()
 
 
 if __name__ == "__main__":

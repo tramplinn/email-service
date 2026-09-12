@@ -58,7 +58,6 @@ class CircuitBreaker:
                 return False
             self._state = CircuitState.HALF_OPEN
             self._trial_in_flight = False
-        # HALF_OPEN: только один пробный вызов одновременно.
         if self._trial_in_flight:
             return False
         self._trial_in_flight = True
