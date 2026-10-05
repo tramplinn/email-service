@@ -1,34 +1,32 @@
 # Tramplin Email Service
 
-Независимый воркер доставки писем: читает задания из RabbitMQ и отправляет их
-через SMTP. Сервис не знает о шаблонах и не ходит в базу — готовые `subject`,
-`html` и `text` формирует backend.
+Takes email jobs from RabbitMQ and sends them over SMTP. It doesn't render
+templates or touch the database — the backend sends a ready `subject`, `html`,
+and `text`.
 
-Стек: Python 3.14, FastStream (RabbitMQ), aiosmtplib, Pydantic Settings и uv.
+Stack: Python 3.14, FastStream, aiosmtplib, Pydantic Settings, uv.
 
-## Как это работает
+## How it works
 
 ```text
 backend → RabbitMQ ─┬─ <prefix>-email-transactional ─┐
                     └─ <prefix>-email-bulk ──────────┴→ email-service → SMTP
 ```
 
-- Слушает две quorum-очереди: транзакционные письма (коды входа и т.п.) и
-  массовые рассылки. Очереди объявлены в репозитории
+- Two queues: transactional (sign-in codes and such) and bulk. They are declared in
   [`infra`](https://gitlab.com/tramplin1/infra/-/blob/main/rabbitmq/definitions.json);
-  сервис подписывается с `declare=False` и сам их не создаёт.
-- Сообщение — JSON [`EmailJob`](src/email_service/models.py):
-  `message_id`, `category`, `to`, `subject`, `html`, `text`.
-- Успешная отправка → `ack`. Ошибка SMTP → `nack(requeue=True)` с паузой.
-- Circuit breaker защищает SMTP-сервер: после
-  `CIRCUIT_BREAKER_FAILURE_THRESHOLD` ошибок подряд попытки прекращаются на
-  `CIRCUIT_BREAKER_RESET_TIMEOUT` секунд, сообщения возвращаются в очередь, а
-  затем одна пробная отправка решает, закрывать ли брейкер.
+  the service only subscribes.
+- Each message is an [`EmailJob`](src/email_service/models.py): `message_id`,
+  `category`, `to`, `subject`, `html`, `text`.
+- Sent → `ack`. SMTP error → back to the queue after a pause.
+- After `CIRCUIT_BREAKER_FAILURE_THRESHOLD` failures in a row, the circuit breaker
+  stops sending for `CIRCUIT_BREAKER_RESET_TIMEOUT` seconds, then tries one email
+  to see if SMTP is back.
 
-## Быстрый старт
+## Quick start
 
-Нужны Python `>=3.14,<3.15`, [uv](https://docs.astral.sh/uv/) и доступный
-RabbitMQ (например, из репозитория `infra`).
+You need Python 3.14, [uv](https://docs.astral.sh/uv/), and a running RabbitMQ
+(for example, from `infra`).
 
 ```bash
 make install
@@ -41,64 +39,13 @@ ENV
 make run
 ```
 
-Для локальной проверки подойдёт любой SMTP-перехватчик, например
-[Mailpit](https://mailpit.axllent.org/) на порту `1025`.
+To catch emails locally, use any SMTP catcher, like
+[Mailpit](https://mailpit.axllent.org/) on port `1025`.
 
-## Команды
+### With Docker
 
-```bash
-make run           # запустить воркер
-make healthcheck   # проверить соединение с RabbitMQ (exit code 0/1)
-make check         # Ruff, mypy и pytest
-make format        # автоформатирование и автофиксы Ruff
-make lock          # обновить uv.lock
-```
-
-Тестовое покрытие должно быть не ниже 90%.
-
-## Конфигурация
-
-Настройки читаются из переменных окружения или `.env`; полный список — в
-[`src/email_service/config.py`](src/email_service/config.py), шаблон для
-деплоя — [`.env.example`](.env.example).
-
-| Переменная                          | По умолчанию                          | Назначение                         |
-| ----------------------------------- | ------------------------------------- | ---------------------------------- |
-| `RABBITMQ_URL`                      | `amqp://tramplin:tramplin@localhost:5672/` | подключение к брокеру         |
-| `EMAIL_TRANSACTIONAL_QUEUE_NAME`    | `email-transactional`                 | очередь транзакционных писем       |
-| `EMAIL_BULK_QUEUE_NAME`             | `email-bulk`                          | очередь массовых рассылок          |
-| `SMTP_HOST`                         | — (обязательна)                       | SMTP-сервер                        |
-| `SMTP_PORT`                         | `587`                                 | порт SMTP                          |
-| `SMTP_USERNAME`, `SMTP_PASSWORD`    | пусто                                 | учётные данные SMTP                |
-| `SMTP_START_TLS`                    | `true`                                | STARTTLS                           |
-| `SMTP_FROM_ADDRESS`                 | `noreply@tramplin.example`            | адрес отправителя                  |
-| `SMTP_TIMEOUT`                      | `10.0`                                | таймаут SMTP, секунды              |
-| `CIRCUIT_BREAKER_FAILURE_THRESHOLD` | `5`                                   | ошибок подряд до размыкания        |
-| `CIRCUIT_BREAKER_RESET_TIMEOUT`     | `30.0`                                | пауза перед пробной отправкой, с   |
-
-В Compose имена очередей собираются из `QUEUE_ENV_PREFIX`
-(`tramplin-stage`, `tramplin-prod`), а `RABBITMQ_URL` — из `RABBITMQ_USER` и
-`RABBITMQ_PASSWORD`.
-
-## Структура
-
-```text
-src/email_service/
-  __main__.py         точка входа: воркер или healthcheck
-  app.py              композиционный корень: брокер, очереди, подписчики
-  delivery.py         политика доставки одного сообщения (ack/nack/retry)
-  circuit_breaker.py  circuit breaker для SMTP
-  smtp_client.py      отправка через aiosmtplib
-  models.py           схема сообщения EmailJob
-  config.py           настройки
-tests/                unit-тесты
-```
-
-## Docker
-
-[`docker-compose.yml`](docker-compose.yml) запускает воркер в read-only
-контейнере от непривилегированного пользователя и подключает его к внешней сети
-`tramplin-edge`, где живёт RabbitMQ из `infra`.
+The container is read-only, runs as a non-root user, and joins the
+`tramplin-edge` network where RabbitMQ lives:
 
 ```bash
 cp .env.example .env.runtime
@@ -106,14 +53,28 @@ make staging-config
 make staging-up
 ```
 
-## CI/CD
+## Commands
 
-Pipeline проверяет Compose-конфигурацию, запускает Ruff, mypy и pytest с
-покрытием, сканирует секреты и зависимости (gitleaks, Semgrep, Trivy), собирает
-immutable-образ и разворачивает его: ветка `stage` — в Compose-проект
-`tramplin-email-stage`, `main` — в production.
+```bash
+make run           # start the worker
+make healthcheck   # check the RabbitMQ connection
+make check         # Ruff, mypy, pytest
+make format        # format and autofix
+make lock          # update uv.lock
+```
 
-Нужные protected CI/CD variables:
+Test coverage must stay at 90% or higher.
 
-- `SERVER_IP`, `SSH_PORT`, `SSH_USER`, `SSH_PRIVATE_KEY`
-- `STAGE_ENV`, `PROD_ENV` типа File
+## Structure
+
+```text
+src/email_service/
+  __main__.py         entry point: worker or healthcheck
+  app.py              broker, queues, subscribers
+  delivery.py         ack/nack/retry for one message
+  circuit_breaker.py  circuit breaker
+  smtp_client.py      SMTP sending
+  models.py           EmailJob schema
+  config.py           settings
+tests/                unit tests
+```
