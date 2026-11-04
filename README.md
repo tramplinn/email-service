@@ -1,3 +1,5 @@
+> Production в k3s: [настройка и запуск](k8s/README.md). CI деплоит только production.
+
 # Tramplin Email Service
 
 Takes email jobs from RabbitMQ and sends them over SMTP. It doesn't render
@@ -9,12 +11,12 @@ Stack: Python 3.14, FastStream, aiosmtplib, Pydantic Settings, uv.
 ## How it works
 
 ```text
-backend → RabbitMQ ─┬─ <prefix>-email-transactional ─┐
-                    └─ <prefix>-email-bulk ──────────┴→ email-service → SMTP
+backend → RabbitMQ ─┬─ email-transactional ─┐
+                    └─ email-bulk ──────────┴→ email-service → SMTP
 ```
 
 - Two queues: transactional (sign-in codes and such) and bulk. They are declared in
-  [`infra`](https://gitlab.com/tramplin1/infra/-/blob/main/rabbitmq/definitions.json);
+  [`infra`](https://gitlab.com/tramplin1/infra/-/blob/main/k8s/rabbitmq/configmap.yaml);
   the service only subscribes.
 - Each message is an [`EmailJob`](src/email_service/models.py): `message_id`,
   `category`, `to`, `subject`, `html`, `text`.
@@ -26,7 +28,7 @@ backend → RabbitMQ ─┬─ <prefix>-email-transactional ─┐
 ## Quick start
 
 You need Python 3.14, [uv](https://docs.astral.sh/uv/), and a running RabbitMQ
-(for example, from `infra`).
+(for example, from the backend dev Compose).
 
 ```bash
 make install
@@ -42,16 +44,9 @@ make run
 To catch emails locally, use any SMTP catcher, like
 [Mailpit](https://mailpit.axllent.org/) on port `1025`.
 
-### With Docker
+## Production
 
-The container is read-only, runs as a non-root user, and joins the
-`tramplin-edge` network where RabbitMQ lives:
-
-```bash
-cp .env.example .env.runtime
-make staging-config
-make staging-up
-```
+Настройки и деплой через GitLab CI: [k8s/README.md](k8s/README.md).
 
 ## Commands
 

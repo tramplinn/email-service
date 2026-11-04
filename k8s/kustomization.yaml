@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: tramplin
+resources:
+- configmap.yaml
+- secrets/store.yaml
+- secrets/external-secrets.yaml
+- deployment.yaml
+images:
+- name: registry.gitlab.com/tramplin1/email-service/email-service
+  newTag: REPLACE_WITH_COMMIT_SHA

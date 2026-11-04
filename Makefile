@@ -1,7 +1,5 @@
-DEPLOY_COMPOSE = docker compose --env-file .env.runtime
 
-.PHONY: install run healthcheck lint format typecheck test check lock \
-	staging-config staging-up staging-down
+.PHONY: install run healthcheck lint format typecheck test check lock
 
 install:
 	uv sync
@@ -30,12 +28,3 @@ check: lint typecheck test
 
 lock:
 	uv lock
-
-staging-config:
-	$(DEPLOY_COMPOSE) config --quiet
-
-staging-up:
-	$(DEPLOY_COMPOSE) up -d --build --wait
-
-staging-down:
-	$(DEPLOY_COMPOSE) down

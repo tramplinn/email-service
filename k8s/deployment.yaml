@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tramplin-email-service
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  progressDeadlineSeconds: 600
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: tramplin-email-service
+  template:
+    metadata:
+      labels:
+        app: tramplin-email-service
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      imagePullSecrets:
+      - name: gitlab-registry
+      containers:
+      - name: worker
+        image: registry.gitlab.com/tramplin1/email-service/email-service:REPLACE_WITH_COMMIT_SHA
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        envFrom:
+        - configMapRef:
+            name: tramplin-email-service
+        env:
+        - name: RABBITMQ_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: tramplin-infra
+              key: RABBITMQ_HOST
+        - name: RABBITMQ_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: tramplin-infra
+              key: RABBITMQ_PORT
+        - name: RABBITMQ_EMAIL_USER
+          valueFrom:
+            configMapKeyRef:
+              name: tramplin-infra
+              key: RABBITMQ_EMAIL_USER
+        - name: EMAIL_TRANSACTIONAL_QUEUE_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: tramplin-infra
+              key: EMAIL_TRANSACTIONAL_QUEUE_NAME
+        - name: EMAIL_BULK_QUEUE_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: tramplin-infra
+              key: EMAIL_BULK_QUEUE_NAME
+        - name: RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: rabbitmq-email
+              key: password
+        - name: RABBITMQ_URL
+          value: amqp://$(RABBITMQ_EMAIL_USER):$(RABBITMQ_PASSWORD)@$(RABBITMQ_HOST):$(RABBITMQ_PORT)/
+        - name: SMTP_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: tramplin-email-service
+              key: SMTP_USERNAME
+        - name: SMTP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: tramplin-email-service
+              key: SMTP_PASSWORD
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            memory: 256Mi
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        command:
+        - python
+        - -m
+        - email_service
+        startupProbe:
+          exec:
+            command:
+            - python
+            - -m
+            - email_service
+            - healthcheck
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 30
+        readinessProbe:
+          exec:
+            command:
+            - python
+            - -m
+            - email_service
+            - healthcheck
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+      volumes:
+      - name: tmp
+        emptyDir:
+          sizeLimit: 64Mi

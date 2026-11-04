@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tramplin-email-service
+data:
+  SMTP_HOST: smtp-relay.brevo.com
+  SMTP_PORT: '2525'
+  SMTP_START_TLS: 'true'
+  SMTP_FROM_ADDRESS: noreply@tramplinn.tech
+  SMTP_TIMEOUT: '10.0'
+  CIRCUIT_BREAKER_FAILURE_THRESHOLD: '5'
+  CIRCUIT_BREAKER_RESET_TIMEOUT: '30.0'
