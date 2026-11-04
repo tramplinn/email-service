@@ -1,4 +1,4 @@
-> Production в k3s: [настройка и запуск](k8s/README.md). CI деплоит только production.
+> Production в k3s: [настройка и запуск](k8s/). CI деплоит только production.
 
 # Tramplin Email Service
 
@@ -46,7 +46,7 @@ To catch emails locally, use any SMTP catcher, like
 
 ## Production
 
-Настройки и деплой через GitLab CI: [k8s/README.md](k8s/README.md).
+Настройки и деплой через GitLab CI: [k8s/README.md](k8s/).
 
 ## Commands
 
