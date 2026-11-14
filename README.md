@@ -1,4 +1,4 @@
-> Production в k3s: [настройка и запуск](k8s/). CI деплоит только production.
+> Production в k3s: [настройка и запуск](https://gitlab.com/tramplin1/specs/-/blob/main/operations/run-and-deploy.md). CI деплоит только production.
 
 # Tramplin Email Service
 
@@ -46,7 +46,7 @@ To catch emails locally, use any SMTP catcher, like
 
 ## Production
 
-Настройки и деплой через GitLab CI: [k8s/README.md](k8s/).
+Настройки и деплой через GitLab CI: [production guide](https://gitlab.com/tramplin1/specs/-/blob/main/operations/run-and-deploy.md).
 
 ## Commands
 
@@ -73,3 +73,7 @@ src/email_service/
   config.py           settings
 tests/                unit tests
 ```
+
+## System guide
+
+[Product, architecture, integration and operations](https://gitlab.com/tramplin1/specs).
